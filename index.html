@@ -69,7 +69,43 @@
     .input-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; }
     textarea { width: 100%; min-height: 110px; padding: 10px; border-radius: 8px; border: 1.5px solid var(--border-color); background: var(--bg-row); color: var(--text-main); font-family: monospace; font-size: 0.82rem; }
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-weight: 600; }
-    @media (max-width: 600px) { .fixture-row { grid-template-columns: 44px 1fr 40px minmax(130px, auto); padding: 10px 8px; gap: 6px; } .matchup-text { font-size: 0.9rem; } .winner-pill { font-size: 0.82rem; padding: 4px 9px; } }
+    @media (max-width: 600px) {
+      .fixture-row {
+        grid-template-columns: 44px minmax(0, 1fr) 40px;
+        padding: 10px 8px;
+        gap: 6px;
+      }
+
+      .kickoff-time {
+        font-size: 0.85rem;
+      }
+
+      .matchup-text {
+        font-size: 0.9rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .coin-stage {
+        width: 40px;
+        height: 40px;
+      }
+
+      .winner-cell {
+        grid-column: 2 / 4;
+        align-items: flex-start;
+        text-align: left;
+        min-width: 0;
+      }
+
+      .winner-pill {
+        font-size: 0.82rem;
+        padding: 4px 9px;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+    }
+
   </style>
 </head>
 <body>
