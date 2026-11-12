@@ -1,1 +1,224 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NTL Toss" />
+  <meta name="theme-color" content="#1B6B3A" />
+  <title>Nottingham Touch Leagues – Coin Toss</title>
+  <style>
+    :root {
+      --ntl-green: #1B6B3A; --ntl-green-dark: #134E2A;
+      --bg-page: #F3F4F6; --bg-card: #FFFFFF; --bg-row: #FFFFFF; --bg-date: #EEF2F6;
+      --text-main: #111827; --text-muted: #4B5563; --border-color: #D1D5DB;
+      --active-row-bg: #E8F5ED; --active-row-text: #111827; --active-row-border: #1B6B3A;
+      --btn-grey: #6B7280; --btn-grey-hover: #4B5563;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: #0F172A; --bg-card: #1E293B; --bg-row: #1E293B; --bg-date: #0F172A;
+        --text-main: #F8FAFC; --text-muted: #CBD5E1; --border-color: #334155;
+        --active-row-bg: #FFFFFF; --active-row-text: #111827; --active-row-border: #22C55E;
+        --btn-grey: #475569; --btn-grey-hover: #64748B;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg-page); color: var(--text-main); padding: 14px; display: flex; flex-direction: column; align-items: center; }
+    .app-container { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 14px; }
+    .recording-frame { background: var(--bg-card); border: 2px solid var(--ntl-green); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.12); }
+    .sticky-header { background: linear-gradient(135deg, var(--ntl-green), var(--ntl-green-dark)); color: #FFF; padding: 15px 18px; position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.15); }
+    .header-left h1 { font-size: 1.22rem; font-weight: 800; line-height: 1.2; color: #FFF; }
+    .header-meta { margin-top: 4px; font-size: 0.9rem; font-weight: 600; color: #E2F5EA; display: flex; flex-direction: column; gap: 2px; }
+    .header-badge { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.3); color: #FFF; font-weight: 800; font-size: 0.92rem; padding: 7px 12px; border-radius: 999px; }
+    .fixtures-viewport { height: 535px; min-height: 535px; max-height: 535px; overflow-y: auto; padding: 12px 14px 20px; scroll-behavior: smooth; position: relative; }
+    .date-group { margin-bottom: 10px; }
+    .date-header { background: var(--bg-date); color: var(--text-main); font-size: 0.84rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 12px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid var(--ntl-green); }
+    .fixture-row { display: grid; grid-template-columns: 50px 1fr 46px minmax(175px, auto); align-items: center; gap: 8px; padding: 11px 12px; margin-bottom: 6px; background: var(--bg-row); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-main); transition: transform 0.38s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease, box-shadow 0.38s ease, border-color 0.35s ease; position: relative; z-index: 1; }
+    .fixture-row.is-tossing { transform: scale(1.022); background-color: var(--active-row-bg); color: var(--active-row-text); border-color: var(--active-row-border); box-shadow: 0 10px 24px rgba(0,0,0,0.18); z-index: 10; }
+    .fixture-row.is-tossing .kickoff-time, .fixture-row.is-tossing .matchup-text, .fixture-row.is-tossing .vs-sep, .fixture-row.is-tossing .winner-label { color: var(--active-row-text) !important; }
+    .kickoff-time { font-size: 0.9rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .matchup-text { font-size: 1rem; font-weight: 700; color: var(--text-main); line-height: 1.25; }
+    .vs-sep { font-weight: 500; color: var(--text-muted); margin: 0 5px; font-size: 0.9rem; }
+    .coin-stage { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; position: relative; perspective: 600px; cursor: pointer; }
+    .coin-shadow { position: absolute; bottom: 2px; width: 26px; height: 5px; background: rgba(0,0,0,0.28); border-radius: 50%; filter: blur(2px); }
+    .ntl-coin { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #2E9E5B, var(--ntl-green) 65%, #0F3D21 100%); border: 2px solid #D4AF37; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35), 0 3px 6px rgba(0,0,0,0.25); color: #FFF; font-size: 0.68rem; font-weight: 900; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
+    @keyframes airCoinToss { 0% { transform: translateY(0) scale(1) rotateX(0deg); } 45% { transform: translateY(-34px) scale(1.26) rotateX(900deg); } 75% { transform: translateY(-10px) scale(1.08) rotateX(1440deg); } 100% { transform: translateY(0) scale(1) rotateX(1800deg); } }
+    @keyframes shadowPulse { 0%, 100% { transform: scale(1); opacity: 0.35; } 45% { transform: scale(0.45); opacity: 0.1; } }
+    .coin-stage.flipping .ntl-coin { animation: airCoinToss 0.85s cubic-bezier(0.25,0.85,0.35,1) forwards; }
+    .coin-stage.flipping .coin-shadow { animation: shadowPulse 0.85s cubic-bezier(0.25,0.85,0.35,1) forwards; }
+    .winner-cell { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; text-align: right; min-height: 38px; }
+    .winner-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+    .winner-tbc { font-size: 0.9rem; font-weight: 700; color: var(--text-muted); padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--border-color); }
+    .winner-pill { display: inline-block; background: var(--ntl-green); color: #FFF; font-size: 0.92rem; font-weight: 800; padding: 5px 12px; border-radius: 999px; box-shadow: 0 4px 10px rgba(27,107,58,0.32); border: 1px solid rgba(255,255,255,0.25); animation: pillPop 0.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+    @keyframes pillPop { 0% { opacity: 0; transform: translateY(4px) scale(0.9); } 100% { opacity: 1; transform: translateY(-1px) scale(1); } }
+    .controls-panel, .input-panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button { border: none; border-radius: 8px; padding: 9px 13px; font-size: 0.88rem; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--ntl-green); color: #FFF; }
+    .btn-secondary { background: #2563EB; color: #FFF; }
+    .btn-grey { background: var(--btn-grey); color: #FFF; }
+    .btn-outline { background: transparent; color: var(--text-main); border: 1.5px solid var(--border-color); }
+    .segmented-group { display: inline-flex; border: 1.5px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+    .segmented-group button { border-radius: 0; background: transparent; color: var(--text-main); padding: 7px 10px; font-size: 0.82rem; border-right: 1px solid var(--border-color); }
+    .segmented-group button:last-child { border-right: none; }
+    .segmented-group button.active { background: var(--ntl-green); color: #FFF; }
+    .control-label { font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-right: 4px; }
+    .input-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; }
+    textarea { width: 100%; min-height: 110px; padding: 10px; border-radius: 8px; border: 1.5px solid var(--border-color); background: var(--bg-row); color: var(--text-main); font-family: monospace; font-size: 0.82rem; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-weight: 600; }
+    @media (max-width: 600px) { .fixture-row { grid-template-columns: 44px 1fr 40px minmax(130px, auto); padding: 10px 8px; gap: 6px; } .matchup-text { font-size: 0.9rem; } .winner-pill { font-size: 0.82rem; padding: 4px 9px; } }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="recording-frame">
+      <div class="sticky-header">
+        <div class="header-left">
+          <h1>Nottingham Touch Leagues – Coin Toss</h1>
+          <div class="header-meta">
+            <span id="headerDate">Coin Toss Date:</span>
+            <span id="headerDivision">Division 2</span>
+          </div>
+        </div>
+        <div class="header-badge">NTL</div>
+      </div>
+      <div class="fixtures-viewport" id="fixturesViewport"></div>
+    </div>
+    <div class="controls-panel">
+      <div class="button-row">
+        <button class="btn-primary" id="btnFlipAnimated">Flip Coins</button>
+        <button class="btn-secondary" id="btnQuickFlip">Quick Flip (No Animation)</button>
+        <button class="btn-grey" id="btnResetToss">Reset Coin Toss</button>
+        <button class="btn-outline" id="btnCopyResults">Copy Results</button>
+      </div>
+      <div class="button-row" style="justify-content: space-between;">
+        <div>
+          <span class="control-label">Fixtures:</span>
+          <div class="segmented-group" id="scopeGroup">
+            <button data-scope="next">Next Week Only</button>
+            <button data-scope="upcoming" class="active">All Upcoming</button>
+            <button data-scope="season">Whole Season</button>
+          </div>
+        </div>
+        <div>
+          <span class="control-label">Division:</span>
+          <div class="segmented-group" id="divisionGroup">
+            <button data-div="1">1</button>
+            <button data-div="2" class="active">2</button>
+            <button data-div="3">3</button>
+            <button data-div="4">4</button>
+          </div>
+        </div>
+        <button class="btn-outline" id="btnToggleLabel" style="font-size:0.82rem;padding:7px 10px;">Label: Tap Off Winner</button>
+      </div>
+    </div>
+    <div class="input-panel">
+      <div class="input-header">
+        <label for="fixtureInput">Paste League Fixtures Table</label>
+        <button class="btn-grey" id="btnResetInput" style="padding:6px 12px;font-size:0.82rem;">Reset Data Input</button>
+      </div>
+      <textarea id="fixtureInput" placeholder="Paste fixtures copied from nottinghamtouchleagues.co.uk..."></textarea>
+    </div>
+  </div>
+  <script>
+    const NOW = new Date();
+    const CUTOFF_DATE = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+    const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const CURRENT_DATE_STR = `${String(CUTOFF_DATE.getDate()).padStart(2,"0")} ${MONTH_NAMES[CUTOFF_DATE.getMonth()]} ${CUTOFF_DATE.getFullYear()}`;
+    const DEFAULT_SAMPLE = `09 Nov 2026\t20:05\tSpiderhoods\t3\t-\t3\tOld Raiders\tRef: Phoenix\n20:45\tPhoenix\t5\t-\t4\tTouch and Go\tRef: Spiderhoods\n21:20\tBarton Bandits\t4\t-\t8\tJagerbombers\tRef: Touch and Go\n16 Nov 2026\t20:05\tJagerbombers\t\t-\t\tPhoenix\tRef: Barton Bandits\n20:45\tBarton Bandits\t\t-\t\tSpiderhoods\tRef: Jagerbombers\n21:20\tTouch and Go\t\t-\t\tOld Raiders\tRef: Spiderhoods\n23 Nov 2026\t20:05\tTouch and Go\t\t-\t\tBarton Bandits\tRef: Phoenix\n20:45\tOld Raiders\t\t-\t\tPhoenix\tRef: Touch and Go\n21:20\tSpiderhoods\t\t-\t\tJagerbombers\tRef: Old Raiders`;
+    let allParsedFixtures = [], visibleFixtures = [], currentScope = "upcoming", currentDivision = "2", winnerLabelMode = "Tap Off Winner", isAnimating = false;
+    const viewportEl = document.getElementById("fixturesViewport"), inputEl = document.getElementById("fixtureInput"), headerDivEl = document.getElementById("headerDivision");
+    document.getElementById("headerDate").textContent = `Coin Toss Date: ${CURRENT_DATE_STR}`;
+    const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+    function parseDateString(s) {
+      const m = s.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/);
+      return m && MONTHS[m[2].toLowerCase()] !== undefined ? new Date(+m[3], MONTHS[m[2].toLowerCase()], +m[1]) : null;
+    }
+    function parseFixturesText(raw) {
+      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean), parsed = [];
+      let curDate = "Upcoming Fixtures", curDateObj = null;
+      for (let line of lines) {
+        if (/^fixtures$/i.test(line)) continue;
+        const dm = line.match(/^(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+(.*)$/);
+        if (dm) { curDate = dm[1]; curDateObj = parseDateString(curDate); line = dm[2].trim(); }
+        let kickoff = "";
+        const tm = line.match(/^(\d{1,2}:\d{2})\s+(.*)$/);
+        if (tm) { kickoff = tm[1]; line = tm[2].trim(); }
+        line = line.replace(/\s+Ref:.*$/i, "").trim();
+        let teamA = "", teamB = "";
+        if (line.includes("\t")) {
+          const p = line.split("\t").map(x => x.trim()).filter(x => x && x !== "-" && !/^\d+$/.test(x));
+          if (p.length >= 2) { teamA = p[0]; teamB = p[1]; }
+        } else if (/\s+vs\.?\s+/i.test(line)) {
+          const p = line.split(/\s+vs\.?\s+/i); teamA = p[0].trim(); teamB = p[1].trim();
+        } else if (/\s+-\s+/.test(line)) {
+          const p = line.split(/\s+-\s+/); teamA = p[0].replace(/\s+\d+$/, "").trim(); teamB = p[1].replace(/^\d+\s+/, "").trim();
+        }
+        if (teamA && teamB) parsed.push({ dateStr: curDate, dateObj: curDateObj, kickoff, teamA, teamB, winner: null });
+      }
+      return parsed;
+    }
+    function applyScopeFilter() {
+      if (currentScope === "season") visibleFixtures = [...allParsedFixtures];
+      else {
+        const up = allParsedFixtures.filter(f => !f.dateObj || f.dateObj > CUTOFF_DATE);
+        visibleFixtures = (currentScope === "next" && up.length) ? up.filter(f => f.dateStr === up[0].dateStr) : up;
+      }
+      renderFixtures();
+    }
+    const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    function renderFixtures() {
+      if (!visibleFixtures.length) { viewportEl.innerHTML = `<div class="empty-state">No fixtures match filter. Paste schedule below or select "Whole Season".</div>`; return; }
+      const groups = [], map = new Map();
+      visibleFixtures.forEach((f, i) => { f.idx = i; if (!map.has(f.dateStr)) { const g = { dateStr: f.dateStr, items: [] }; map.set(f.dateStr, g); groups.push(g); } map.get(f.dateStr).items.push(f); });
+      viewportEl.innerHTML = groups.map(g => `<div class="date-group"><div class="date-header">${esc(g.dateStr)}</div>${g.items.map(f => `<div class="fixture-row" id="row-${f.idx}"><div class="kickoff-time">${esc(f.kickoff||"--:--")}</div><div class="matchup-text">${esc(f.teamA)}<span class="vs-sep">vs</span>${esc(f.teamB)}</div><div class="coin-stage" id="coin-${f.idx}" onclick="flipSingle(${f.idx})"><div class="ntl-coin">NTL</div><div class="coin-shadow"></div></div><div class="winner-cell"><div class="winner-label">${esc(winnerLabelMode)}</div><div id="slot-${f.idx}">${f.winner ? `<span class="winner-pill">${esc(f.winner)}</span>` : `<span class="winner-tbc">TBC</span>`}</div></div></div>`).join("")}</div>`).join("");
+    }
+    const pick = f => Math.random() < 0.5 ? f.teamA : f.teamB;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    function flipSingle(i) {
+      if (isAnimating || !visibleFixtures[i]) return;
+      const c = document.getElementById(`coin-${i}`), s = document.getElementById(`slot-${i}`);
+      c.classList.remove("flipping"); void c.offsetWidth; c.classList.add("flipping");
+      setTimeout(() => { visibleFixtures[i].winner = pick(visibleFixtures[i]); s.innerHTML = `<span class="winner-pill">${esc(visibleFixtures[i].winner)}</span>`; c.classList.remove("flipping"); }, 820);
+    }
+    async function runAnimated() {
+      if (isAnimating || !visibleFixtures.length) return;
+      isAnimating = true;
+      visibleFixtures.forEach((f, i) => { f.winner = null; document.getElementById(`slot-${i}`).innerHTML = `<span class="winner-tbc">TBC</span>`; });
+      viewportEl.scrollTo({ top: 0, behavior: "smooth" }); await sleep(300);
+      for (let i = 0; i < visibleFixtures.length; i++) {
+        const row = document.getElementById(`row-${i}`), c = document.getElementById(`coin-${i}`), s = document.getElementById(`slot-${i}`);
+        if (visibleFixtures.length > 9 && i >= 2) viewportEl.scrollTo({ top: Math.max(0, row.offsetTop + row.offsetHeight / 2 - viewportEl.clientHeight / 2), behavior: "smooth" });
+        row.classList.add("is-tossing"); c.classList.remove("flipping"); void c.offsetWidth; c.classList.add("flipping");
+        await sleep(850);
+        visibleFixtures[i].winner = pick(visibleFixtures[i]); s.innerHTML = `<span class="winner-pill">${esc(visibleFixtures[i].winner)}</span>`; c.classList.remove("flipping");
+        await sleep(650); row.classList.remove("is-tossing"); await sleep(150);
+      }
+      isAnimating = false;
+    }
+    document.getElementById("btnFlipAnimated").onclick = runAnimated;
+    document.getElementById("btnQuickFlip").onclick = () => { if (!isAnimating) visibleFixtures.forEach((f, i) => { f.winner = pick(f); document.getElementById(`slot-${i}`).innerHTML = `<span class="winner-pill">${esc(f.winner)}</span>`; }); };
+    document.getElementById("btnResetToss").onclick = () => { if (!isAnimating) { visibleFixtures.forEach((f, i) => { f.winner = null; document.getElementById(`slot-${i}`).innerHTML = `<span class="winner-tbc">TBC</span>`; }); viewportEl.scrollTo({ top: 0, behavior: "smooth" }); } };
+    document.getElementById("btnCopyResults").onclick = function() {
+      if (!visibleFixtures.length) return;
+      const out = ["Nottingham Touch Leagues – Coin Toss", `Coin Toss Date: ${CURRENT_DATE_STR}`, `Division ${currentDivision}`, ""];
+      let last = "";
+      for (const f of visibleFixtures) {
+        if (f.dateStr !== last) { if (last) out.push(""); out.push(f.dateStr); last = f.dateStr; }
+        out.push(`${f.kickoff ? f.kickoff + " | " : ""}${f.teamA} vs ${f.teamB} — ${winnerLabelMode}: ${f.winner || "TBC"}`);
+      }
+      navigator.clipboard.writeText(out.join("\n")).then(() => { this.textContent = "Copied!"; setTimeout(() => this.textContent = "Copy Results", 1800); });
+    };
+    document.getElementById("btnResetInput").onclick = () => { if (!isAnimating) { inputEl.value = ""; allParsedFixtures = []; visibleFixtures = []; renderFixtures(); } };
+    inputEl.oninput = () => { allParsedFixtures = parseFixturesText(inputEl.value); applyScopeFilter(); };
+    document.querySelectorAll("#scopeGroup button").forEach(b => b.onclick = () => { if (isAnimating) return; document.querySelectorAll("#scopeGroup button").forEach(x => x.classList.remove("active")); b.classList.add("active"); currentScope = b.dataset.scope; applyScopeFilter(); });
+    document.querySelectorAll("#divisionGroup button").forEach(b => b.onclick = () => { document.querySelectorAll("#divisionGroup button").forEach(x => x.classList.remove("active")); b.classList.add("active"); currentDivision = b.dataset.div; headerDivEl.textContent = `Division ${currentDivision}`; });
+    document.getElementById("btnToggleLabel").onclick = function() { winnerLabelMode = winnerLabelMode === "Tap Off Winner" ? "Coin Toss Winner" : "Tap Off Winner"; this.textContent = `Label: ${winnerLabelMode}`; document.querySelectorAll(".winner-label").forEach(e => e.textContent = winnerLabelMode); };
+    inputEl.value = DEFAULT_SAMPLE; allParsedFixtures = parseFixturesText(DEFAULT_SAMPLE); applyScopeFilter();
+  </script>
+</body>
+</html>
 
