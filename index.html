@@ -39,7 +39,21 @@
     .fixture-row.is-tossing { transform: scale(1.022); background-color: var(--active-row-bg); color: var(--active-row-text); border-color: var(--active-row-border); box-shadow: 0 10px 24px rgba(0,0,0,0.18); z-index: 10; }
     .fixture-row.is-tossing .kickoff-time, .fixture-row.is-tossing .matchup-text, .fixture-row.is-tossing .vs-sep, .fixture-row.is-tossing .winner-label { color: var(--active-row-text) !important; }
     .kickoff-time { font-size: 0.9rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-    .matchup-text { font-size: 1rem; font-weight: 700; color: var(--text-main); line-height: 1.25; }
+    .matchup-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fixture-division {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
     .vs-sep { font-weight: 500; color: var(--text-muted); margin: 0 5px; font-size: 0.9rem; }
     .coin-stage { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; position: relative; perspective: 600px; cursor: pointer; }
     .coin-shadow { position: absolute; bottom: 2px; width: 26px; height: 5px; background: rgba(0,0,0,0.28); border-radius: 50%; filter: blur(2px); }
@@ -210,7 +224,7 @@
           <h1>Nottingham Touch Leagues – Coin Toss</h1>
           <div class="header-meta">
             <span id="headerDate">Coin Toss Date:</span>
-            <span id="headerDivision">Division 2</span>
+            <span id="headerDivision">Select a competition to begin</span>
           </div>
         </div>
         <div class="header-badge">NTL</div>
@@ -234,8 +248,6 @@
           </div>
         </div>
         <div>
-          <span class="control-label">Division:</span>
-          <div class="segmented-group" id="divisionGroup">
             <button data-div="1">1</button>
             <button data-div="2" class="active">2</button>
             <button data-div="3">3</button>
@@ -257,10 +269,10 @@
   <select id="leagueSelect">
     <option value="">Loading competitions...</option>
   </select>
-  <label for="importDivisionSelect" class="control-label">Division:</label>
-  <select id="importDivisionSelect" disabled>
-    <option value="">Select a competition first</option>
-  </select>
+  <label class="control-label">Divisions:</label>
+<div id="divisionOptions">
+  Select a competition first.
+</div>
   <button class="btn-primary" id="btnImportFixtures" disabled>
     Import Fixtures
   </button>
