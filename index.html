@@ -472,6 +472,178 @@
     }
 
     document.getElementById("btnRunDiagnostics").onclick = runDiagnostics;
+    
+// ==========================================
+// AUTOMATED FIXTURE IMPORT
+// ==========================================
+
+const leagueSelectEl = document.getElementById("leagueSelect");
+const importDivisionEl = document.getElementById("importDivisionSelect");
+const importButtonEl = document.getElementById("btnImportFixtures");
+const importStatusEl = document.getElementById("importStatus");
+
+let fixtureDatabase = null;
+
+// Extract competition and division from league name
+function getLeagueDetails(name) {
+  const match = name.match(
+    /^(.*?)\s+[–—-]\s+Division\s+(.+)$/i
+  );
+
+  return {
+    competition: match ? match[1].trim() : name.trim(),
+    division: match ? match[2].trim() : ""
+  };
+}
+
+// Load available competitions from JSON
+async function loadLeagueDatabase() {
+  try {
+    importStatusEl.textContent = "Loading fixture database...";
+
+    const response = await fetch("./data/fixtures.json");
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data.leagues)) {
+      throw new Error("Invalid fixture database.");
+    }
+
+    fixtureDatabase = data.leagues;
+
+    const competitions = [
+      ...new Set(
+        fixtureDatabase.map(league =>
+          getLeagueDetails(league.name).competition
+        )
+      )
+    ];
+
+    leagueSelectEl.innerHTML =
+      '<option value="">Select competition</option>';
+
+    competitions.forEach(competition => {
+      const option = document.createElement("option");
+      option.value = competition;
+      option.textContent = competition;
+      leagueSelectEl.appendChild(option);
+    });
+
+    importStatusEl.textContent =
+      `${data.leagueCount} leagues available. Select a competition.`;
+
+  } catch (error) {
+    importStatusEl.textContent =
+      "Unable to load fixture database: " + error.message;
+  }
+}
+
+// Populate divisions when competition changes
+leagueSelectEl.addEventListener("change", function() {
+  const competition = this.value;
+
+  importDivisionEl.innerHTML =
+    '<option value="">Select division</option>';
+
+  importDivisionEl.disabled = true;
+  importButtonEl.disabled = true;
+
+  if (!competition || !fixtureDatabase) return;
+
+  const matchingLeagues = fixtureDatabase.filter(league =>
+    getLeagueDetails(league.name).competition === competition
+  );
+
+  matchingLeagues.forEach(league => {
+    const details = getLeagueDetails(league.name);
+    const option = document.createElement("option");
+
+    option.value = league.url;
+    option.textContent = "Division " + details.division;
+
+    importDivisionEl.appendChild(option);
+  });
+
+  importDivisionEl.disabled = matchingLeagues.length === 0;
+
+  importStatusEl.textContent =
+    `${matchingLeagues.length} divisions available.`;
+});
+
+// Enable import once a division is selected
+importDivisionEl.addEventListener("change", function() {
+  importButtonEl.disabled = !this.value;
+});
+
+// Import selected fixtures
+importButtonEl.addEventListener("click", function() {
+  if (!fixtureDatabase || !importDivisionEl.value) return;
+
+  const selectedLeague = fixtureDatabase.find(
+    league => league.url === importDivisionEl.value
+  );
+
+  if (!selectedLeague ||
+      !Array.isArray(selectedLeague.fixtures) ||
+      selectedLeague.fixtures.length === 0) {
+    importStatusEl.textContent =
+      "No fixtures available for this division.";
+    return;
+  }
+
+  // Convert JSON records into existing app format
+  const importedFixtures = selectedLeague.fixtures.map(f => ({
+    dateStr: f.date,
+    dateObj: parseDateString(f.date),
+    kickoff: f.kickoff,
+    teamA: f.teamA,
+    teamB: f.teamB,
+    winner: null
+  }));
+
+  // Validate before replacing existing fixtures
+  if (importedFixtures.some(f =>
+    !f.dateObj || !f.teamA || !f.teamB
+  )) {
+    importStatusEl.textContent =
+      "Import failed: Some fixture records are incomplete.";
+    return;
+  }
+
+  // Replace existing fixtures only after successful validation
+  allParsedFixtures = importedFixtures;
+
+  // Clear manual input to avoid confusion
+  inputEl.value = "";
+
+  // Update selected division
+  const details = getLeagueDetails(selectedLeague.name);
+
+  currentDivision = details.division;
+  headerDivEl.textContent = "Division " + currentDivision;
+
+  document.querySelectorAll("#divisionGroup button").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.div === currentDivision
+    );
+  });
+
+  // Apply existing fixture filters and render
+  applyScopeFilter();
+
+  importStatusEl.textContent =
+    `Successfully imported ${importedFixtures.length} fixtures from ${selectedLeague.name}.`;
+  
+});
+
+// Initialise database
+loadLeagueDatabase();
+
   </script>
 </body>
 </html>
