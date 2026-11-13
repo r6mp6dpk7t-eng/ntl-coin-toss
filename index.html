@@ -152,7 +152,7 @@
 
     .fixture-row {
       display: grid;
-      grid-template-columns: 48px minmax(0, 1fr) 40px minmax(135px, auto);
+      grid-template-columns: 48px minmax(0, 1fr) 40px 150px;
       align-items: center;
       gap: 7px;
       min-height: 57px;
@@ -310,7 +310,10 @@
     .winner-pill {
       display: inline-block;
       max-width: 100%;
-      overflow-wrap: anywhere;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-sizing: border-box;
       background: var(--ntl-green);
       color: #FFF;
       font-size: 0.8rem;
@@ -644,7 +647,7 @@
       }
 
       .fixture-row {
-        grid-template-columns: 40px minmax(75px, 1fr) 34px minmax(100px, auto);
+        grid-template-columns: 40px minmax(0, 1fr) 38px 112px;
         gap: 5px;
         min-height: 58px;
         padding: 6px 6px;
@@ -680,6 +683,8 @@
       }
 
       .winner-pill {
+        display: inline-block;
+        max-width: 112px;
         font-size: 0.75rem;
         padding: 3px 8px;
       }
@@ -982,6 +987,12 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
+    // Keep winner pills compact: show up to 12 characters, then an ellipsis.
+    function winnerDisplayName(name) {
+      const value = String(name ?? "");
+      return value.length > 12 ? `${value.slice(0, 12)}…` : value;
+    }
+
     function renderFixtures() {
       if (!visibleFixtures.length) {
         viewportEl.innerHTML = `
@@ -1030,7 +1041,7 @@
                 <div class="winner-label">${esc(winnerLabelMode)}</div>
                 <div id="slot-${fixture.idx}">
                   ${fixture.winner
-                    ? `<span class="winner-pill">${esc(fixture.winner)}</span>`
+                    ? `<span class="winner-pill">${esc(winnerDisplayName(fixture.winner))}</span>`
                     : `<span class="winner-tbc">TBC</span>`}
                 </div>
               </div>
@@ -1065,7 +1076,7 @@
 
       setTimeout(() => {
         visibleFixtures[index].winner = pickWinner(visibleFixtures[index]);
-        slot.innerHTML = `<span class="winner-pill">${esc(visibleFixtures[index].winner)}</span>`;
+        slot.innerHTML = `<span class="winner-pill">${esc(winnerDisplayName(visibleFixtures[index].winner))}</span>`;
         coin.classList.remove("flipping");
       }, 820);
     }
@@ -1103,7 +1114,7 @@
         await sleep(850);
 
         visibleFixtures[index].winner = pickWinner(visibleFixtures[index]);
-        slot.innerHTML = `<span class="winner-pill">${esc(visibleFixtures[index].winner)}</span>`;
+        slot.innerHTML = `<span class="winner-pill">${esc(winnerDisplayName(visibleFixtures[index].winner))}</span>`;
         coin.classList.remove("flipping");
 
         await sleep(500);
@@ -1122,7 +1133,7 @@
       visibleFixtures.forEach((fixture, index) => {
         fixture.winner = pickWinner(fixture);
         document.getElementById(`slot-${index}`).innerHTML =
-          `<span class="winner-pill">${esc(fixture.winner)}</span>`;
+          `<span class="winner-pill">${esc(winnerDisplayName(fixture.winner))}</span>`;
       });
     });
 
@@ -1363,7 +1374,7 @@
     function populateCompetitions() {
       const competitions = [...new Set(
         fixtureDatabase.map(league => getLeagueDetails(league.name).competition)
-      )];
+      )].sort((a, b) => a.localeCompare(b));
 
       const previousSelection = leagueSelectEl.value;
 
