@@ -1374,7 +1374,7 @@
     function populateCompetitions() {
       const competitions = [...new Set(
         fixtureDatabase.map(league => getLeagueDetails(league.name).competition)
-      )].sort((a, b) => a.localeCompare(b));
+      )];
 
       const previousSelection = leagueSelectEl.value;
 
