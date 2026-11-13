@@ -212,7 +212,11 @@
       visibleFixtures.forEach((f, i) => { f.idx = i; if (!map.has(f.dateStr)) { const g = { dateStr: f.dateStr, items: [] }; map.set(f.dateStr, g); groups.push(g); } map.get(f.dateStr).items.push(f); });
       viewportEl.innerHTML = groups.map(g => `<div class="date-group"><div class="date-header">${esc(g.dateStr)}</div>${g.items.map(f => `<div class="fixture-row" id="row-${f.idx}"><div class="kickoff-time">${esc(f.kickoff||"--:--")}</div><div class="matchup-text">${esc(f.teamA)}<span class="vs-sep">vs</span>${esc(f.teamB)}</div><div class="coin-stage" id="coin-${f.idx}" onclick="flipSingle(${f.idx})"><div class="ntl-coin">NTL</div><div class="coin-shadow"></div></div><div class="winner-cell"><div class="winner-label">${esc(winnerLabelMode)}</div><div id="slot-${f.idx}">${f.winner ? `<span class="winner-pill">${esc(f.winner)}</span>` : `<span class="winner-tbc">TBC</span>`}</div></div></div>`).join("")}</div>`).join("");
     }
-    const pick = f => Math.random() < 0.5 ? f.teamA : f.teamB;
+    const pick = f => {
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  return random[0] < 0x80000000 ? f.teamA : f.teamB;
+};
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     function flipSingle(i) {
       if (isAnimating || !visibleFixtures[i]) return;
