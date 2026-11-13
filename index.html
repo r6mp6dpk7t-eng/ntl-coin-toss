@@ -258,6 +258,20 @@
     document.querySelectorAll("#divisionGroup button").forEach(b => b.onclick = () => { document.querySelectorAll("#divisionGroup button").forEach(x => x.classList.remove("active")); b.classList.add("active"); currentDivision = b.dataset.div; headerDivEl.textContent = `Division ${currentDivision}`; });
     document.getElementById("btnToggleLabel").onclick = function() { winnerLabelMode = winnerLabelMode === "Tap Off Winner" ? "Coin Toss Winner" : "Tap Off Winner"; this.textContent = `Label: ${winnerLabelMode}`; document.querySelectorAll(".winner-label").forEach(e => e.textContent = winnerLabelMode); };
     inputEl.value = DEFAULT_SAMPLE; allParsedFixtures = parseFixturesText(DEFAULT_SAMPLE); applyScopeFilter();
+  
+async function testNTLConnection() {
+  const url = "https://nottinghamtouchleagues.co.uk/leagues/autumn-league-2026-division-2/";
+
+  try {
+    const response = await fetch(url);
+    console.log("NTL connection successful:", response.status);
+    console.log("Page content:", (await response.text()).slice(0, 500));
+  } catch (error) {
+    console.error("NTL connection failed:", error);
+  }
+}
+
+testNTLConnection();
   </script>
 </body>
 </html>
