@@ -429,19 +429,6 @@
     }
 
     document.getElementById("btnRunDiagnostics").onclick = runDiagnostics;
-async function testNTLConnection() {
-  const url = "https://nottinghamtouchleagues.co.uk/leagues/autumn-league-2026-division-2/";
-
-  try {
-    const response = await fetch(url);
-    console.log("NTL connection successful:", response.status);
-    console.log("Page content:", (await response.text()).slice(0, 500));
-  } catch (error) {
-    console.error("NTL connection failed:", error);
-  }
-}
-
-testNTLConnection();
   </script>
 </body>
 </html>
