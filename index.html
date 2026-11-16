@@ -833,6 +833,11 @@
           <span id="randomStatus">Not tested</span>
         </div>
 
+        <div class="diagnostic-row">
+          <span>Application persistence</span>
+          <span id="persistenceStatus">Not tested</span>
+        </div>
+
         <button class="btn-primary" id="btnRunDiagnostics">Run Diagnostics</button>
         <div id="diagnosticOutput" aria-live="polite">Diagnostics have not been run.</div>
       </div>
@@ -865,6 +870,128 @@
     let isAnimating = false;
     let currentCompetition = "";
     let currentDivisions = [];
+
+    /* =========================================================
+       1A. SHARED APPLICATION PERSISTENCE FOUNDATION
+       ========================================================= */
+
+    // Keep module data in separate IndexedDB records so one module cannot
+    // overwrite another module's state. The fixture JSON cache remains separate.
+    const APP_DB_NAME = "ntlApplication";
+    const APP_DB_VERSION = 1;
+    let appDatabasePromise = null;
+
+    function openAppDatabase() {
+      if (!("indexedDB" in window)) {
+        return Promise.reject(new Error("IndexedDB is not available in this browser."));
+      }
+
+      if (appDatabasePromise) return appDatabasePromise;
+
+      appDatabasePromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(APP_DB_NAME, APP_DB_VERSION);
+
+        request.onupgradeneeded = event => {
+          const database = event.target.result;
+
+          if (!database.objectStoreNames.contains("moduleState")) {
+            database.createObjectStore("moduleState", { keyPath: "module" });
+          }
+
+          if (!database.objectStoreNames.contains("appMeta")) {
+            database.createObjectStore("appMeta", { keyPath: "key" });
+          }
+        };
+
+        request.onsuccess = () => {
+          const database = request.result;
+          database.onversionchange = () => database.close();
+          resolve(database);
+        };
+
+        request.onerror = () => reject(request.error || new Error("Unable to open application storage."));
+        request.onblocked = () => reject(new Error("Application storage upgrade is blocked by another open tab."));
+      }).catch(error => {
+        // Allow a later retry if opening the database initially fails.
+        appDatabasePromise = null;
+        throw error;
+      });
+
+      return appDatabasePromise;
+    }
+
+    function runAppStoreRequest(storeName, mode, makeRequest) {
+      return openAppDatabase().then(database => new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, mode);
+        const store = transaction.objectStore(storeName);
+        let request;
+
+        try {
+          request = makeRequest(store);
+        } catch (error) {
+          reject(error);
+          return;
+        }
+
+        let requestResult;
+        request.onsuccess = () => { requestResult = request.result; };
+        request.onerror = () => reject(request.error || new Error("Application storage request failed."));
+        transaction.oncomplete = () => resolve(requestResult);
+        transaction.onerror = () => reject(transaction.error || new Error("Application storage transaction failed."));
+        transaction.onabort = () => reject(transaction.error || new Error("Application storage transaction was aborted."));
+      }));
+    }
+
+    const AppPersistence = Object.freeze({
+      saveModuleState(moduleName, state) {
+        if (!["coinToss", "tournamentTimer"].includes(moduleName)) {
+          return Promise.reject(new Error(`Unknown application module: ${moduleName}`));
+        }
+
+        return runAppStoreRequest("moduleState", "readwrite", store =>
+          store.put({ module: moduleName, state, savedAt: Date.now() })
+        );
+      },
+
+      loadModuleState(moduleName) {
+        if (!["coinToss", "tournamentTimer"].includes(moduleName)) {
+          return Promise.reject(new Error(`Unknown application module: ${moduleName}`));
+        }
+
+        return runAppStoreRequest("moduleState", "readonly", store => store.get(moduleName));
+      },
+
+      saveMeta(key, value) {
+        return runAppStoreRequest("appMeta", "readwrite", store =>
+          store.put({ key, value, savedAt: Date.now() })
+        );
+      },
+
+      loadMeta(key) {
+        return runAppStoreRequest("appMeta", "readonly", store => store.get(key));
+      },
+
+      async test() {
+        const testKey = "__persistence_diagnostic__";
+        const testValue = `test-${Date.now()}`;
+
+        await this.saveMeta(testKey, testValue);
+        const stored = await this.loadMeta(testKey);
+        await runAppStoreRequest("appMeta", "readwrite", store => store.delete(testKey));
+
+        if (stored?.value !== testValue) {
+          throw new Error("Saved data could not be read back correctly.");
+        }
+
+        return true;
+      }
+    });
+
+    // Expose a small, stable application interface for the modules added later.
+    window.NTLApp = Object.freeze({
+      version: APP_DB_VERSION,
+      persistence: AppPersistence
+    });
 
     const viewportEl = document.getElementById("fixturesViewport");
     const inputEl = document.getElementById("fixtureInput");
@@ -1561,6 +1688,7 @@
       const databaseStatus = document.getElementById("databaseStatus");
       const recordsStatus = document.getElementById("recordsStatus");
       const randomStatus = document.getElementById("randomStatus");
+      const persistenceStatus = document.getElementById("persistenceStatus");
       const output = document.getElementById("diagnosticOutput");
 
       button.disabled = true;
@@ -1569,6 +1697,7 @@
       databaseStatus.textContent = "Testing…";
       recordsStatus.textContent = "Testing…";
       randomStatus.textContent = "Testing…";
+      persistenceStatus.textContent = "Testing…";
 
       const results = [];
 
@@ -1615,6 +1744,15 @@
         results.push(`Random generator failed: ${error.message}`);
       }
 
+      try {
+        await AppPersistence.test();
+        persistenceStatus.textContent = "Available";
+        results.push("Application persistence: IndexedDB save and read-back successful.");
+      } catch (error) {
+        persistenceStatus.textContent = "Failed";
+        results.push(`Application persistence failed: ${error.message}`);
+      }
+
       output.textContent = results.join("\n");
       button.disabled = false;
       button.textContent = "Run Diagnostics";
@@ -1625,6 +1763,13 @@
     /* =========================================================
        12. START THE APP
        ========================================================= */
+
+    // Initialise shared application storage independently of the fixture cache.
+    // A storage failure must not prevent the existing Coin Toss module from loading.
+    openAppDatabase().catch(error => {
+      document.getElementById("persistenceStatus").textContent = "Unavailable";
+      console.warn("Application persistence could not be initialised:", error);
+    });
 
     // Load any saved JSON immediately; download only when due or forced.
     updateHeader();
